@@ -1,5 +1,7 @@
 # Genomic analysis of compensated genomes from the *vg1* mutation
 
+This pipeline is adapted and built on Paul Knoops run through of his pooled data (https://github.com/PaulKnoops/episodicSequenceData)
+
 The scripts are writen as they will be executed on the server *Drosophila*. Therefore all location of data and output are according to that. 
 
 First of all I did fastQC (FastQC v0.11.7) on the fasta files using the script *fastqc.sh*
@@ -73,7 +75,7 @@ ${program}bwa mem -t 4 -M ${referance}bwaIndexed_flyBase.dmel-all-chromosome-r6.
 done
 ```
 
-Some quality control paralell to converting the files from sam format to a bam and sorting them was the next step after the mapping. I used samtools to do that in the script *samtoolsConvert.sh*
+Some quality control paralell to converting the files from sam format to a bam and sorting them was the next step after the mapping. I used samtools (samtools-1.7) to do that in the script *samtoolsConvert.sh*
 
 Example:
 
@@ -92,6 +94,32 @@ echo ${fileBam}
 samtools view -b -S -q 20 -F 0x0004 ${input}${fileSam} | samtools sort -O bam -o ${output}${fileBam}
 done
 ```
+
+Ideally you remove duplicates (possable pcr amplification). Using picard in the script *bla* I removed the possable dublicates in the reads.
+
+Example:
+
+```
+#vestigial2013
+#program=/home/dagny/picardTools/
+#input=/data3/Fly/compensationGenomeAnalysis/samtooledMergedBwalignTrimmedVestigial1_2013/
+#output=/data3/Fly/compensationGenomeAnalysis/picardedSamtooledMergedBwalignTrimmedVestigial1_2013/
+#tmp=/home/dagny/tmp/
+
+#for file in ${input}*.bam
+#for file in ${input}*_CAS_R1_CGATGT_pe.bam
+#do
+#fileA=${file:${#input}}
+#fileB=${fileA:0:-14}
+#fileB=${fileB:39}
+#echo ${fileA}
+#echo ${fileB}
+#java -Xmx2g -Djava.io.tmpdir=${tmp} -jar ${program}picard.jar SortSam I=${input}${fileA} O=${output}picSort_${fileA} VALIDATION_STRINGENCY=SILENT SO=coordinate TMP_DIR=${tmp}
+#java -Xmx2g -jar ${program}picard.jar MarkDuplicates I=${output}picSort_${fileA} O=${output}dupremo_picSort_${fileA}  M=${output}/dupstat/${fileB}dupstat.txt VALIDATION_STRINGENCY=SILENT REMOVE_DUPLICATES=true
+#rm ${output}picSort_${fileA}
+#done
+
+
 
 
 
