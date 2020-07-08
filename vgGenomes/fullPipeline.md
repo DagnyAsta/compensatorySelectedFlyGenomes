@@ -1,6 +1,6 @@
 # Genomic analysis of compensated genomes from the *vg1* mutation
 lalala
-  ```sh
+  ```
   #this is a script for building an indexed drosophila genome from flybase to align on, both with bowtie2 version 2.3.4.1
   input=/home/dagny/fly/flyRefForCompensation/
   output=/home/dagny/fly/flyRefForCompensation/bowtie2_index/
