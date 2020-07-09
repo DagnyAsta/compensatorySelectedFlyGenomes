@@ -95,29 +95,108 @@ samtools view -b -S -q 20 -F 0x0004 ${input}${fileSam} | samtools sort -O bam -o
 done
 ```
 
-Ideally you remove duplicates (possable pcr amplification). Using picard in the script *bla* I removed the possable dublicates in the reads.
+Ideally you remove duplicates (possable PCR amplification). First I indexed the reference genome with picard using the script *picardIndex.sh*
+
+Example:
+
+```
+#! /bin/bash
+
+program=/home/dagny/picardTools/picard.jar
+index_dir=/home/dagny/fly/flyRefForCompensation/
+ref_genome=/home/dagny/fly/flyRefForCompensation/flyBase.dmel-all-chromosome-r6.15.fasta
+
+java -jar ${program} CreateSequenceDictionary R=${ref_genome} O=${index_dir}flyBase.dmel-all-chromosome-r6.15.dict
+
+```
+
+
+Using picard in the script *picardSortDupRemov.sh* I sorted the bam files as requered with picard tools and removed the possable dublicates in the reads.
 
 Example:
 
 ```
 #vestigial2013
-#program=/home/dagny/picardTools/
-#input=/data3/Fly/compensationGenomeAnalysis/samtooledMergedBwalignTrimmedVestigial1_2013/
-#output=/data3/Fly/compensationGenomeAnalysis/picardedSamtooledMergedBwalignTrimmedVestigial1_2013/
-#tmp=/home/dagny/tmp/
+program=/home/dagny/picardTools/
+input=/data3/Fly/compensationGenomeAnalysis/samtooledMergedBwalignTrimmedVestigial1_2013/
+output=/data3/Fly/compensationGenomeAnalysis/picardedSamtooledMergedBwalignTrimmedVestigial1_2013/
+tmp=/home/dagny/tmp/
 
-#for file in ${input}*.bam
-#for file in ${input}*_CAS_R1_CGATGT_pe.bam
+for file in ${input}*.bam
+do
+fileA=${file:${#input}}
+fileB=${fileA:0:-14}
+fileB=${fileB:39}
+echo ${fileA}
+echo ${fileB}
+java -Xmx2g -Djava.io.tmpdir=${tmp} -jar ${program}picard.jar SortSam I=${input}${fileA} O=${output}picSort_${fileA} VALIDATION_STRINGENCY=SILENT SO=coordinate TMP_DIR=${tmp}
+java -Xmx2g -jar ${program}picard.jar MarkDuplicates I=${output}picSort_${fileA} O=${output}dupremo_picSort_${fileA}  M=${output}/dupstat/${fileB}dupstat.txt VALIDATION_STRINGENCY=SILENT REMOVE_DUPLICATES=true
+rm ${output}picSort_${fileA}
+done
+
+```
+
+To eliminate the noise in the data I decided to realign the reads around indels. I used a script from Katharine Pelletier, a PhD student at Ian Dworkin's lab at that time, to lean on.
+
+```
+#script modified from Katharine Pelletier
+
+
+#!/bin/bash
+
+
+#Path to input directory
+#input=/data3/Fly/compensationGenomeAnalysis/picardReadGrouped/picReadGrouMergePicardedSamtooledBwalignTrimmed20140815_DNASeq_PEand20140826_DNASeq_PE/
+
+#Path to output directory
+#output=/data3/Fly/compensationGenomeAnalysis/gatkIndelRealign/
+
+#Variable for reference genome (non-zipped)
+#refGenome=/home/dagny/fly/flyRefForCompensation/flyBase.dmel-all-chromosome-r6.15.fasta
+
+#Path to GATK
+#program=/home/dagny/GATK/gatk/GenomeAnalysisTK-3.8-1-0-gf15c1c3ef/
+
+#files=(${input}*_FVW_R1_*.bam)
+
+#for file in ${files[@]}
 #do
-#fileA=${file:${#input}}
-#fileB=${fileA:0:-14}
-#fileB=${fileB:39}
-#echo ${fileA}
-#echo ${fileB}
-#java -Xmx2g -Djava.io.tmpdir=${tmp} -jar ${program}picard.jar SortSam I=${input}${fileA} O=${output}picSort_${fileA} VALIDATION_STRINGENCY=SILENT SO=coordinate TMP_DIR=${tmp}
-#java -Xmx2g -jar ${program}picard.jar MarkDuplicates I=${output}picSort_${fileA} O=${output}dupremo_picSort_${fileA}  M=${output}/dupstat/${fileB}dupstat.txt VALIDATION_STRINGENCY=SILENT REMOVE_DUPLICATES=true
-#rm ${output}picSort_${fileA}
+
+#fileName=${file:${#input}}
+#echo ${fileName}
+##echo ${fileName:0:-3}
+
+#java -Xmx8g -jar ${program}GenomeAnalysisTK.jar -I ${input}${fileName} -R ${refGenome} -T RealignerTargetCreator -o ${output}${fileName:0:-3}intervals
+
+#java -Xmx8g -jar ${program}GenomeAnalysisTK.jar -I ${input}${fileName} -R ${refGenome} -T IndelRealigner -targetIntervals ${output}${fileName:0:-3}intervals -o ${output}indelRealigned_${fileName}
+
 #done
+
+
+
+
+After removing duplicate I merged the bam files, in the case of the vestigal data from 2013 it was only two sequence samples from 2 lanes. However in the net and rho data set this is more complicated and needs to be taken with extra caution, not to merge wrong files. I used the script *samtoolsMerge.sh*
+
+```
+#to merge the two technical replicates from the two lanes
+
+#vestigial 2013
+program=/programs/samtools-1.7/
+input=/data3/Fly/compensationGenomeAnalysis/samtooledBwalignTrimmedVestigial1_2013/
+output=/data3/Fly/compensationGenomeAnalysis/samtooledMergedBwalignTrimmedVestigial1_2013/
+
+for file in ${input}*L005_pe.bam
+do
+fileL005=${file:${#input}}
+fileL006=${fileL005/"_L005_"/"_L006_"}
+fileMerged=merged_${fileL005:0:-12}_pe.bam
+echo ${fileL005}
+echo ${fileL006}
+echo ${fileMerged}
+samtools merge ${output}${fileMerged} ${input}${fileL005} ${input}${fileL006} 
+done
+
+```
 
 
 
