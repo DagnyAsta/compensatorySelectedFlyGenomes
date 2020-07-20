@@ -4,7 +4,7 @@ This pipeline is adapted and built on Paul Knoops run through of his pooled data
 
 The scripts are writen as they will be executed on the server *Drosophila*. Therefore all location of data and output are according to that. 
 
-### QC and aligning
+### Quality control and rimming using FastQC and cutadapt
 
 First of all I did fastQC (FastQC v0.11.7) on the fasta files using the script *fastqc.sh*
 
@@ -43,6 +43,7 @@ ${program}cutadapt -q 20 -a AGATCGGAAGAGCACACGTCTGAACTCCAGTCA -A AGATCGGAAGAGCGT
 done
 
 ```
+### Aligning with bwa followed by a quality control with samtools and picard tools
 
 Indexing the reference genome was the next step. I desided to use the mapper bwa (bwa-0.7.17) and fetched the genome on flybase, 6.15 version. For indexing I used the script *bwaindexing.sh*
 
@@ -200,11 +201,63 @@ done
 
 ```
 
-### Fst calculation and more
+In case I did an extra step of quality control after the merging with the script *samtoolsQC.sh*
+
+```
+#second QC if the dup removeal affected the quality scale
+
+program=/programs/samtools-1.7/
+input=/data3/Fly/compensationGenomeAnalysis/picardDupRem/picardedSamtooledMergedBwalignTrimmedVestigial1_2013/
+output=/data3/Fly/compensationGenomeAnalysis/finalBam/vestigial/
+for file in ${input}*.bam
+
+do
+
+fileBam=${file:${#input}}
+echo ${fileBam}
+samtools view -q 20 -F 0x0004 -b ${input}${fileBam} > ${output}secQfilt_${fileBam}
+rm ${input}${fileBam}
+
+done
+```
+
+YOU NEED TO ADD THE INDEXING OF THE BAM FILES
+
+
+### Pi and Fst calculation with Popoolation including a step of indel realignment with GATK
  
-After aligning and QC-ing the reads I used Popoolation2 (version popoolation2_1201) and Popoolation (version popoolation_1.2.2) to calculate the allel frequency difference. For somewhat of a QC I did calculate the pi for the population with the popoolation script: *Variance-sliding.pl* executed within the bash script *poopolationTajimaPiCalculation.sh*
+In order to prepare the data for downstream analysis with popoolation I used samtools to pile the bam files up using the script *samtoolsMpileup.sh*
+
+Example: 
+
+```
+#to pileup the bamfiles in order to make syncronized files for downstream popoolation analysis
+
+####vestigial 2013
+program=/programs/samtools-1.7/
+input=/data3/Fly/compensationGenomeAnalysis/gatkIndelRealign/indelRealignPicReadGrouPicardedSamtooledMergedBwalignTrimmedVestigial1_2013/
+output=/data3/Fly/compensationGenomeAnalysis/samtoolPileUp/pileUpIndelRealignPicardedSamtooledMergedBwalignTrimmedVestigial1_2013/
+ref=/home/dagny/fly/flyRefForCompensation/bwa_index/
+#creat one pileup file for one bam file - per population
+for file in ${input}*.bam
+do
+fileA=${file:${#input}}
+fileB=${fileA:0:-14}
+fileB=vestigial2013${fileB:85}
+echo ${fileA}
+echo ${fileB}
+${program}samtools mpileup -B -f ${ref}flyBase.dmel-all-chromosome-r6.15.fasta ${input}${fileA} > ${output}chr2L_${fileB}.mpileup
+done
+
+```
+note: in the same script there are multiple options of pileup combination, pileing all togeather, only CAS and NASC *etc.*
+
+Downstream I used Popoolation2 (version popoolation2_1201) and Popoolation (version popoolation_1.2.2) to calculate the allel frequency difference. 
+
+For somewhat of a QC I did calculate the pi for the population with the popoolation script *Variance-sliding.pl* executed within the bash script *poopolationTajimaPiCalculation.sh*
 
 Example:
+
 
 ```
 #! /bin/bash    
@@ -228,6 +281,59 @@ perl ${program}Variance-sliding.pl --input ${input}${file} --output ${output}${f
 done
 ```
 
+In order to calculate the allel difference between populations I piled the bam files all togeather in one large mpileup file with samtools using the sam script above with another option (*samtoolsMpileup.sh*)
+
+Example: 
+
+```
+#to pileup the bamfiles in order to make syncronized files for downstream popoolation analysis
+
+####vestigial 2013
+program=/programs/samtools-1.7/
+input=/data3/Fly/compensationGenomeAnalysis/gatkIndelRealign/indelRealignPicReadGrouPicardedSamtooledMergedBwalignTrimmedVestigial1_2013/
+output=/data3/Fly/compensationGenomeAnalysis/samtoolPileUp/pileUpIndelRealignPicardedSamtooledMergedBwalignTrimmedVestigial1_2013/
+ref=/home/dagny/fly/flyRefForCompensation/bwa_index/
+
+
+create a pileupfile for all the populations
+${program}samtools mpileup -B -f ${ref}flyBase.dmel-all-chromosome-r6.15.fasta ${input}indelRealigned*.bam > ${output}vestigial2013AllPop.mpileup
+
+```
+
+Then I syncroniced the mpileup file using the popoolation2 script *mpileup2sync.jar* excecuted in the bash script *poopolationSyncFiles.sh*
+
+Example:
+
+```
+#script that will use the jar file from poopolation to sync the piled up bam files from the vg data
+
+#vestigial
+#program=/home/dagny/popoolationTools/popoolation2_1201/
+#input=/data3/Fly/compensationGenomeAnalysis/samtoolPileUp/pileUpIndelRealignPicardedSamtooledMergedBwalignTrimmedVestigial1_2013/
+#output=/data3/Fly/compensationGenomeAnalysis/poopolationSync/
+
+#java -ea -Xmx4g -jar ${program}mpileup2sync.jar --input ${input}vestigial2013CAS123andNASC123RG2BiologicalRepMerged.mpileup --output ${output}vestigial2013CAS123andNASC123RGBiologicalRepMerged.sync --fastq-type sanger --min-qual 20 --threads 2
+```
+
+With the syncroniced file I could calculate fst values for windows or bases. This I did with the perl popoolation2 script *fst-sliding.pl* executed in the bash script *poopolationFstCalculation.sh*
+
+Example:
+
+```
+#this script is to calculate fst from sync files (from mpileupfiles, synced with popoolation2), with popoolation2
+
+
+#vestigial calculation
+#program=/home/dagny/popoolationTools/popoolation2_1201/
+#input=/data3/Fly/compensationGenomeAnalysis/poopolationSync/
+#output=/data3/Fly/compensationGenomeAnalysis/poopolationFstCalc/vestigial2013AllPop/
+
+#perl ${program}fst-sliding.pl --input ${input}*.sync --output ${output}vestigial2013AllPop_50to200Cov1window.fst --min-count 6 --min-coverage 50 -max-coverage 200 --min-covered-fraction 1 --window-size 1 --step-size 1 --pool-size 120
+```
+
+Note: Within the same bash script there are multiple options of parameter that I did try. We did decide on that window sice of 1000 and step sice of 500 would be reasonable. The coverage was harder to establish as much of the X chromosome did get wiped out if the coverage was set to low. I did try to set the max coverage to see if that was causing the issue but it did not to much of a difference, therefore I figured the min coverage was the determing factor of this problem. I ended up seting the min coverage to 30 and max coverage around 200. The min coverage fraction I naturally set to 1 when calculating base pare wise but for windows of sice 1000 to 0.6 (this is the proportion within the frame you are calculating that needs to meet the min coverage requirement).
+
+### Preparing and ploting Fst values in R
 
 
 
