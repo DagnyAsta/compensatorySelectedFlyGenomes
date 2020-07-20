@@ -4,6 +4,8 @@ This pipeline is adapted and built on Paul Knoops run through of his pooled data
 
 The scripts are writen as they will be executed on the server *Drosophila*. Therefore all location of data and output are according to that. 
 
+##QC and aligning
+
 First of all I did fastQC (FastQC v0.11.7) on the fasta files using the script *fastqc.sh*
 
 Example:
@@ -172,7 +174,7 @@ To eliminate the noise in the data I decided to realign the reads around indels.
 
 #done
 
-
+```
 
 
 After removing duplicate I merged the bam files, in the case of the vestigal data from 2013 it was only two sequence samples from 2 lanes. However in the net and rho data set this is more complicated and needs to be taken with extra caution, not to merge wrong files. I used the script *samtoolsMerge.sh*
@@ -198,6 +200,8 @@ done
 
 ```
 
+##Fst calculation and more
+ 
 
 
 
