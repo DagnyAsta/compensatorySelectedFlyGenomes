@@ -4,7 +4,7 @@ This pipeline is adapted and built on Paul Knoops run through of his pooled data
 
 The scripts are writen as they will be executed on the server *Drosophila*. Therefore all location of data and output are according to that. 
 
-##QC and aligning
+### QC and aligning
 
 First of all I did fastQC (FastQC v0.11.7) on the fasta files using the script *fastqc.sh*
 
@@ -200,8 +200,33 @@ done
 
 ```
 
-##Fst calculation and more
+### Fst calculation and more
  
+After aligning and QC-ing the reads I used Popoolation2 (version popoolation2_1201) and Popoolation (version popoolation_1.2.2) to calculate the allel frequency difference. For somewhat of a QC I did calculate the pi for the population with the popoolation script: *Variance-sliding.pl* executed within the bash script *poopolationTajimaPiCalculation.sh*
+
+Example:
+
+```
+#! /bin/bash    
+
+#this script is to execute the perl script from popoolations which calculates tajima pi 
+
+program=/home/dagny/popoolationTools/popoolation_1.2.2/
+input=/data3/Fly/compensationGenomeAnalysis/samtoolPileUp/pileUpPicardedSamtooledMergedBwalignTrimmedVestigial1_2013/
+output=/data3/Fly/compensationGenomeAnalysis/poopolationPiCalc/vestigial
+
+for file in vestigial2013CAS_R1.mpileup vestigial2013CAS_R2.mpileup vestigial2013CAS_R3.mpileup vestigial2013FVW_WT.mpileup vestigial2013NASC_R1.mpileup vestigial2013NASC_R2.mpileup vestigial2013NASC_R3.mpileup vestigial2013VG_BASE.mpileup
+
+do
+
+fileBase=${file:0:-8}
+echo ${file}
+echo ${fileBase}
+
+perl ${program}Variance-sliding.pl --input ${input}${file} --output ${output}${fileBase}.pi --measure pi --window-size 10000 --step-size 10000 --min-count 2 --min-coverage 4 --max-coverage 400 --min-qual 20 --pool-size 120 --fastq-type sanger --snp-output ${output}${fileBase}.snps --min-covered-fraction 0.5
+
+done
+```
 
 
 
