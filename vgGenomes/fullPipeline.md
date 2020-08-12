@@ -335,6 +335,19 @@ Note: Within the same bash script there are multiple options of parameter that I
 
 ### Preparing and ploting Fst values in R
 
+When preparing the fst files and plotting the values across the genome I used the R script *fstPlot.R*. First ofcourse the fst files need to be transfered from the server drosophila to your computer, this I do with a simple bash script you see below:
+
+```
+scp -r -P 24680 dagny@nf-ux148.rhi.hi.is:/data3/Fly/compensationGenomeAnalysis/poopolationFstCalc/vestigial2013AllPopBiologicalRepMergedRepMasked /Users/Dagny/Dropbox/CompensationDNAseq/data/poopolationFstCalc/afterIndelRealign/
+```
+
+Note: The R script I will not give an example of as it is long to give an example of. There is an example of a manhattan plot below. 
+
+
+
+Takk og bless.
+
+
 
 
 
