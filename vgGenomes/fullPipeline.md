@@ -1,4 +1,4 @@
-# Genomic analysis of compensated genomes from the *vg1* mutation
+# Genomic analysis of the compensated genomes 
 
 This pipeline is adapted and built on Paul Knoops run through of his pooled data (https://github.com/PaulKnoops/episodicSequenceData)
 
